@@ -92,7 +92,8 @@
                 baseX: 0, baseY: 0,
                 handleX: 0, handleY: 0,
                 radius: 60,
-                handleRadius: 30
+                handleRadius: 30,
+                canJump: true // **NOVO: Flag para controlar o pulo por toque**
             };
 
             const aimJoystick = {
@@ -132,39 +133,33 @@
             const keys = { a: { pressed: false }, d: { pressed: false }, space: { pressed: false } };
             const mouse = { x: 0, y: 0, down: false };
 
-            // --- FUNÇÃO DE CÁLCULO DE COORDENADAS CORRIGIDA ---
             function getCanvasCoordinates(event) {
-                const rect = canvas.getBoundingClientRect(); // A caixa CSS do elemento canvas
+                const rect = canvas.getBoundingClientRect();
 
-                const canvasRatio = canvas.width / canvas.height; // 1200 / 800 = 1.5
+                const canvasRatio = canvas.width / canvas.height;
                 const rectRatio = rect.width / rect.height;
 
                 let renderedWidth, renderedHeight, offsetX, offsetY;
 
                 if (rectRatio > canvasRatio) {
-                    // Barras pretas nas laterais (letterboxing)
                     renderedHeight = rect.height;
                     renderedWidth = renderedHeight * canvasRatio;
                     offsetX = (rect.width - renderedWidth) / 2;
                     offsetY = 0;
                 } else {
-                    // Barras pretas em cima/baixo (pillarboxing)
                     renderedWidth = rect.width;
                     renderedHeight = renderedWidth / canvasRatio;
                     offsetX = 0;
                     offsetY = (rect.height - renderedHeight) / 2;
                 }
 
-                // Posição do clique relativa à área de jogo renderizada
                 const clickX = event.clientX - rect.left - offsetX;
                 const clickY = event.clientY - rect.top - offsetY;
 
-                // Ignora cliques nas barras pretas
                 if (clickX < 0 || clickX > renderedWidth || clickY < 0 || clickY > renderedHeight) {
                     return null;
                 }
 
-                // Converte as coordenadas do clique para o sistema de coordenadas interno do canvas
                 const finalX = clickX * (canvas.width / renderedWidth);
                 const finalY = clickY * (canvas.height / renderedHeight);
 
@@ -204,32 +199,23 @@
                 }
             });
             canvas.addEventListener('mousedown', (e) => {
-                console.log("--- DEBUG: MOUSE DOWN EVENT FIRED ---");
                 if (isMobile) return;
 
                 const coords = getCanvasCoordinates(e);
-                if (!coords) {
-                    console.log("DEBUG: Click on black bars, ignoring.");
-                    return;
-                }
+                if (!coords) return;
 
                 mouse.x = coords.x;
                 mouse.y = coords.y;
                 mouse.down = true;
-                console.log(`DEBUG: CORRECTED click coordinates: X=${mouse.x.toFixed(2)}, Y=${mouse.y.toFixed(2)}`);
                 handleMouseClick(mouse.x, mouse.y);
             });
             canvas.addEventListener('mouseup', () => { if (!isMobile) mouse.down = false; });
 
             function handleMouseClick(clickX, clickY) {
-                console.log(`--- DEBUG: handleMouseClick called with X: ${clickX.toFixed(2)}, Y: ${clickY.toFixed(2)} ---`);
-                console.log(`DEBUG: Current gameState is: '${gameState}'`);
-
                 if (!audioContext) initAudio();
 
                 switch (gameState) {
                     case 'pressStart':
-                        console.log("DEBUG: Action -> pressStart to mainMenu");
                         menuMusicPlayer.startMusic();
                         gameState = 'mainMenu';
                         if (isMobile) {
@@ -244,23 +230,18 @@
                         }
                         break;
                     case 'mainMenu':
-                        console.log("DEBUG: In 'mainMenu' state, checking button clicks.");
-                        if (mainMenuButtons.newGame.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked 'NEW GAME'"); gameState = 'hatSelection'; }
-                        else if (mainMenuButtons.upgrades.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked 'UPGRADES'"); gameState = 'upgradeMenu'; }
-                        else if (mainMenuButtons.options.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked 'OPTIONS'"); previousGameState = gameState; gameState = 'optionsMenu'; }
-                        else if (mainMenuButtons.credits.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked 'CREDITS'"); gameState = 'creditsMenu'; }
-                        else { console.log("DEBUG: No button clicked in mainMenu."); }
+                        if (mainMenuButtons.newGame.isClicked(clickX, clickY)) { gameState = 'hatSelection'; }
+                        else if (mainMenuButtons.upgrades.isClicked(clickX, clickY)) { gameState = 'upgradeMenu'; }
+                        else if (mainMenuButtons.options.isClicked(clickX, clickY)) { previousGameState = gameState; gameState = 'optionsMenu'; }
+                        else if (mainMenuButtons.credits.isClicked(clickX, clickY)) { gameState = 'creditsMenu'; }
                         break;
                     case 'hatSelection':
-                        console.log("DEBUG: In 'hatSelection' state, checking button clicks.");
-                        if (hatSelectionElements.arrowLeft.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked Arrow Left"); selectedHatIndex = (selectedHatIndex - 1 + hats.length) % hats.length; sfx.uiSelect(); }
-                        else if (hatSelectionElements.arrowRight.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked Arrow Right"); selectedHatIndex = (selectedHatIndex + 1) % hats.length; sfx.uiSelect(); }
-                        else if (hatSelectionElements.startButton.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked Start/Continue"); gameState = 'staffSelection'; }
-                        else if (hatSelectionElements.backButton.isClicked(clickX, clickY)) { console.log("DEBUG: Clicked Back"); gameState = 'mainMenu'; }
-                        else { console.log("DEBUG: No button clicked in hatSelection."); }
+                        if (hatSelectionElements.arrowLeft.isClicked(clickX, clickY)) { selectedHatIndex = (selectedHatIndex - 1 + hats.length) % hats.length; sfx.uiSelect(); }
+                        else if (hatSelectionElements.arrowRight.isClicked(clickX, clickY)) { selectedHatIndex = (selectedHatIndex + 1) % hats.length; sfx.uiSelect(); }
+                        else if (hatSelectionElements.startButton.isClicked(clickX, clickY)) { gameState = 'staffSelection'; }
+                        else if (hatSelectionElements.backButton.isClicked(clickX, clickY)) { gameState = 'mainMenu'; }
                         break;
                     case 'staffSelection':
-                        console.log("DEBUG: In 'staffSelection' state, checking button clicks.");
                         if (staffSelectionElements.arrowLeft.isClicked(clickX, clickY)) { selectedStaffIndex = (selectedStaffIndex - 1 + staffs.length) % staffs.length; sfx.uiSelect(); }
                         else if (staffSelectionElements.arrowRight.isClicked(clickX, clickY)) { selectedStaffIndex = (selectedStaffIndex + 1) % staffs.length; sfx.uiSelect(); }
                         else if (staffSelectionElements.startButton.isClicked(clickX, clickY)) { startGame(); }
@@ -344,24 +325,17 @@
                             moveJoystick.baseY = coords.y;
                             moveJoystick.handleX = coords.x;
                             moveJoystick.handleY = coords.y;
+                            moveJoystick.canJump = true; // **NOVO: Permite o pulo no novo toque**
                         }
                         else if (coords.x >= canvas.width / 2 && !aimJoystick.active) {
-                            const jumpButtonRadius = 60;
-                            const jumpButtonX = canvas.width / 2;
-                            const jumpButtonY = canvas.height - 90;
-                            const distToJump = Math.hypot(coords.x - jumpButtonX, coords.y - jumpButtonY);
-
-                            if (distToJump <= jumpButtonRadius) {
-                                if (player) player.jump();
-                            } else {
-                                aimJoystick.active = true;
-                                aimJoystick.id = touch.identifier;
-                                aimJoystick.baseX = coords.x;
-                                aimJoystick.baseY = coords.y;
-                                aimJoystick.handleX = coords.x;
-                                aimJoystick.handleY = coords.y;
-                                isAutoFireOn = true;
-                            }
+                            // **REMOVIDO: Lógica do botão de pulo**
+                            aimJoystick.active = true;
+                            aimJoystick.id = touch.identifier;
+                            aimJoystick.baseX = coords.x;
+                            aimJoystick.baseY = coords.y;
+                            aimJoystick.handleX = coords.x;
+                            aimJoystick.handleY = coords.y;
+                            isAutoFireOn = true;
                         }
                     }
                 }, { passive: false });
@@ -378,8 +352,18 @@
                         if (touch.identifier === moveJoystick.id) {
                             moveJoystick.handleX = coords.x;
                             moveJoystick.handleY = coords.y;
+
                             const dx = moveJoystick.handleX - moveJoystick.baseX;
+                            const dy = moveJoystick.handleY - moveJoystick.baseY;
                             const deadZone = 10;
+                            const jumpThreshold = -50; // Quão para cima precisa mover para pular
+
+                            // **NOVO: Lógica de pulo ao mover o direcional para cima**
+                            if (moveJoystick.canJump && dy < jumpThreshold) {
+                                if (player) player.jump();
+                                moveJoystick.canJump = false; // Impede pulos repetidos no mesmo toque
+                            }
+
                             keys.a.pressed = dx < -deadZone;
                             keys.d.pressed = dx > deadZone;
                         } else if (touch.identifier === aimJoystick.id) {
@@ -733,8 +717,6 @@
                 }
                 isClicked(clickX, clickY) {
                     const hit = clickX > this.x && clickX < this.x + this.width && clickY > this.y && clickY < this.y + this.height;
-                    // DEBUG LOGGING to show button check details
-                    console.log(`DEBUG: Checking Button '${this.text}'. Bounds: X(${this.x}-${this.x + this.width}), Y(${this.y}-${this.y + this.height}). Clicked at: (${clickX.toFixed(2)}, ${clickY.toFixed(2)}). Result: ${hit}`);
                     return hit;
                 }
             }
@@ -987,24 +969,14 @@
                     let clampedY = aimJoystick.baseY + dy;
                     if (dist > aimJoystick.radius) {
                         clampedX = aimJoystick.baseX + (dx / dist) * aimJoystick.radius;
-                        clampedY = moveJoystick.baseY + (dy / dist) * moveJoystick.radius;
+                        clampedY = aimJoystick.baseY + (dy / dist) * aimJoystick.radius;
                     }
                     ctx.beginPath();
                     ctx.arc(clampedX, clampedY, aimJoystick.handleRadius, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     ctx.fill();
                 }
-                ctx.beginPath();
-                ctx.arc(canvas.width / 2, canvas.height - 90, 60, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(0, 255, 127, 0.4)';
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 30px Courier New';
-                ctx.textAlign = 'center';
-                ctx.fillText('PULO', canvas.width / 2, canvas.height - 85);
+                // **REMOVIDO: Desenho do botão de pulo**
             }
 
             function drawGameObjects() { platforms.forEach(p => { ctx.fillStyle = '#8d6e63'; ctx.fillRect(p.x, p.y, p.width, p.height); }); if (player) player.draw(); specialEffects.wisps.forEach(w => w.draw()); projectiles.forEach(p => p.draw()); enemyProjectiles.forEach(p => p.draw()); enemies.forEach(e => e.draw()); specialEffects.thunderbolts.forEach(b => b.draw()); specialEffects.orbs.forEach(o => o.draw()); particles.forEach(p => p.draw()); }
@@ -1209,7 +1181,6 @@
                     const arrow_Width = 60;
                     const arrow_Height = 60;
 
-                    // Posições manuais para garantir alinhamento visual no canvas de 1200x800
                     const arrowLeft_X = 280;
                     const arrowRight_X = 860;
 
